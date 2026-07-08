@@ -30,6 +30,13 @@ RUN python -m venv /app/.venv \
   && pip3 install --no-cache-dir --upgrade pygments \
   && pip3 install --no-cache-dir -r requirements.txt \
   && deactivate
+RUN cd /tmp \
+  && git clone https://github.com/garabik/grc \
+  && cd grc \
+  && git checkout v1.13 \
+  && sh ./install.sh \
+  && cd .. \
+  && rm -rf /tmp/grc
 RUN apk del build-deps
 
 # installing server dependencies
