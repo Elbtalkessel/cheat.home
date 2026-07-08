@@ -1,0 +1,6 @@
+[submodule "cheat.sheets"]
+	path = cheat.sheets
+	url = git@github.com:Elbtalkessel/cheat.sheets.git
+[submodule "cheat.sh"]
+	path = cheat.sh
+	url = git@github.com:Elbtalkessel/cheat.sh.git
