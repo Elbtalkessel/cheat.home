@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ pkgs, config, ... }: {
   packages =
     [ ]
     ++ (with pkgs.python3Packages; [
@@ -39,4 +39,16 @@
   services = {
     redis.enable = true;
   };
+  processes = {
+    devserver = {
+      exec = # bash
+        ''
+          pushd cheat.sh/bin
+            export CHEATSH_PATH_WORKDIR="${config.devenv.root}/.cheat.sh"
+            python -m flask --app app.py run --reload --debug
+          popd
+        '';
+    };
+  };
+  process.manager.implementation = "mprocs";
 }

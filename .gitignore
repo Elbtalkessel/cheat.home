@@ -5,6 +5,7 @@ devenv.local.yaml
 
 # direnv
 .direnv
+.cheat.sh
 
 # pre-commit
 .pre-commit-config.yaml
