@@ -1,6 +1,10 @@
 { pkgs, config, ... }: {
   packages =
-    [ ]
+    (with pkgs; [
+      # chmod.sh:
+      grc
+      bc
+    ])
     ++ (with pkgs.python3Packages; [
       six
       colorama
@@ -37,18 +41,18 @@
     };
   };
   services = {
-    redis.enable = true;
+    redis.enable = false;
   };
   processes = {
-    devserver = {
+    chtsh = {
       exec = # bash
         ''
-          pushd cheat.sh/bin
+          pushd cheat.sh
             export CHEATSH_PATH_WORKDIR="${config.devenv.root}/.cheat.sh"
-            python -m flask --app app.py run --reload --debug
+            ${config.devenv.root}/.devenv/state/venv/bin/python -m flask --app bin/app.py run --reload --debug
           popd
         '';
     };
   };
-  process.manager.implementation = "mprocs";
+  process.manager.implementation = "honcho";
 }
