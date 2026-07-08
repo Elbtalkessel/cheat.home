@@ -1,0 +1,3 @@
+[Build]
+File=%h/.config/containers/systemd/chtsh/Containerfile
+ImageTag=quay.io/glazing2928/chtsh:latest

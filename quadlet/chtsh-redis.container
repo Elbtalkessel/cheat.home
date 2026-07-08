@@ -1,0 +1,15 @@
+[Unit]
+Description=Redis server for Cheat.sh
+StartLimitBurst=5
+StartLimitIntervalSec=120
+
+[Service]
+Restart=on-abnormal
+RestartSec=15
+
+[Container]
+Image=docker.io/library/redis:8-alpine
+ContainerName=chtsh-redis
+AutoUpdate=registry
+Volume=chtsh_redis_data:/data
+Network=chtsh.network

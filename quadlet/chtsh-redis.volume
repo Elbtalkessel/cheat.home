@@ -1,0 +1,5 @@
+[Unit]
+Description=Cheat.sh Redis Data Volume
+
+[Volume]
+VolumeName=chtsh_redis_data
