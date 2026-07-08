@@ -1,4 +1,7 @@
 { pkgs, config, ... }: {
+
+  env.REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
+
   packages =
     (with pkgs; [
       # chmod.sh:
@@ -40,9 +43,11 @@
       };
     };
   };
+
   services = {
     redis.enable = false;
   };
+
   processes = {
     chtsh =
       let
@@ -77,5 +82,6 @@
         };
       };
   };
+
   process.manager.implementation = "honcho";
 }
