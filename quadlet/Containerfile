@@ -29,7 +29,7 @@ RUN curl -L https://raw.githubusercontent.com/Elbtalkessel/cheat.home/refs/heads
 RUN apk add --no-cache --virtual build-deps py3-pip g++ python3-dev libffi-dev py3-pkgconfig icu-dev
 RUN python -m venv /app/.venv \
   && . /app/.venv/bin/activate \
-  && pip3 install --no-cache-dir --upgrade pygments \
+  && pip3 install --no-cache-dir --upgrade pygments feedparser markdownify \
   && pip3 install --no-cache-dir -r requirements.txt \
   && deactivate
 RUN cd /tmp \
