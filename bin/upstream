@@ -214,6 +214,33 @@ def query_search_api(q: str) -> list[SearchItemDict]:
     return data["items"]
 
 
+def sentence_chunks(text: str, max_length=60) -> typing.Generator[str]:
+    chunks: list[str] = []
+    for word in text.split(" "):
+        next_chunk = " ".join(chunks + [word])
+        if len(next_chunk) > max_length:
+            yield f"// {' '.join(chunks)}"
+            chunks = [word]
+        else:
+            chunks.append(word)
+    if rest := " ".join(chunks):
+        yield f"// {rest}"
+
+
+def render(text: str) -> typing.Generator[str]:
+    code_block = False
+    for line in text.split("\n"):
+        if line == "```":
+            if code_block:
+                yield "// " + "-" * 60 + "\n\n"
+            code_block = not code_block
+            continue
+        if code_block:
+            yield line
+        else:
+            yield from sentence_chunks(line, 67)
+
+
 def query(q: str) -> typing.Generator[str]:
     results = query_search_api(q)
     logger.info("len(results)=%s", len(results))
@@ -227,10 +254,10 @@ def query(q: str) -> typing.Generator[str]:
             question = i
             break
 
-    answers = query_question_rss(question["link"])
+    answers = query_question_rss(question["link"])[1:]
     for answer in answers:
-        yield "# " + answer["title"]
-        yield answer["summary_detail"]["value"]
+        yield from render(answer["title"])
+        yield from render(answer["summary_detail"]["value"])
 
 
 if __name__ == "__main__":
