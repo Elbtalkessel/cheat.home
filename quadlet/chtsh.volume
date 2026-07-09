@@ -1,5 +1,0 @@
-[Unit]
-Description=Cheat.sh Data Volume
-
-[Volume]
-VolumeName=chtsh_data

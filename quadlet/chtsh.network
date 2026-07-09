@@ -1,5 +1,0 @@
-[Unit]
-Description=Cheat.sh Internal Network
-
-[Network]
-NetworkName=chtsh_internal

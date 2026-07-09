@@ -89,6 +89,27 @@
     redis.enable = false;
   };
 
+  scripts = {
+    "c:login" = {
+      exec = # bash
+        ''
+          docker --config ${config.devenv.root}/.cheat.sh/docker
+        '';
+    };
+    "c:build" = {
+      exec = # bash
+        ''
+          docker build containers -f containers/Containerfile --tag quay.io/glazing2928/chtsh:latest
+        '';
+    };
+    "c:push" = {
+      exec = # bash
+        ''
+          docker --config ${config.devenv.root}/.cheat.sh/docker push quay.io/glazing2928/chtsh:latest
+        '';
+    };
+  };
+
   processes = {
     # Local dev server, reloads on code, binary and config file changes.
     #
