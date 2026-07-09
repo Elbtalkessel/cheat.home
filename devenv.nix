@@ -1,6 +1,15 @@
 { pkgs, config, ... }: {
 
-  env.REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
+  env = {
+    REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
+    UPSTREAM_LOG_LEVEL = "DEBUG";
+    UPSTREAM_RSS_CACHE = "true";
+    UPSTREAM_REQ_CACHE = "true";
+  };
+  enterShell = ''
+    export PATH="$DEVENV_ROOT/bin:$PATH"
+    export UPSTREAM_DIR_CACHE="''${XDG_CACHE_HOME}/chtsh"
+  '';
 
   packages =
     (with pkgs; [
@@ -28,6 +37,10 @@
       levenshtein
       pytest
       black
+      # bin/upstream dependencies
+      feedparser
+      markdownify
+      # --
     ]);
 
   languages = {
@@ -81,6 +94,5 @@
         };
       };
   };
-
   process.manager.implementation = "honcho";
 }
