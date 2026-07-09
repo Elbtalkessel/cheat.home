@@ -1,16 +1,27 @@
 { pkgs, config, ... }: {
 
   env = {
+    # Allows using custom certificate authority in case
+    # if want to use your own upstream server,
+    # read about upstream servers in README.md.
     REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
+    # Check bin/upstream for explanation.
     UPSTREAM_LOG_LEVEL = "INFO";
     UPSTREAM_RSS_CACHE = "true";
     UPSTREAM_REQ_CACHE = "true";
+    # Configs, logs, spool
+    CHEATSH_PATH_WORKDIR = "${config.devenv.root}/.cheat.sh";
   };
+  # Add local bin directory to path for easier debugging
+  # and sets cache directory for the upstream binary, also
+  # for easier debugging when developing upstream result scrapper.
   enterShell = ''
     export PATH="$DEVENV_ROOT/bin:$PATH"
     export UPSTREAM_DIR_CACHE="''${XDG_CACHE_HOME}/chtsh"
   '';
 
+  # For no particular reason cheat.sh/requirements.txt are mostly
+  # ignored, python depdendencies are installed from the nix packages.
   packages =
     (with pkgs; [
       # chmod.sh:
@@ -48,6 +59,8 @@
       directory = "./cheat.sh";
       venv = {
         enable = true;
+        # Dependencies that are non package for nix.
+        # Note: there is ltpycld2 on nixpkgs, but its interface differs from the pycld2 from pypi.
         requirements = ''
           polyglot
           pycld2
@@ -62,6 +75,14 @@
   };
 
   processes = {
+    # Local dev server, reloads on code, binary and config file changes.
+    #
+    # Flask is invoked by explicitly specifying python path, without
+    # it nix can pick unrelated python path a system one for example.
+    #
+    # To start it use `devenv up`, process manager is mediocre and may
+    # behave bad on sigterm sometimes hunging,
+    # ps aux | grep '[c]htsh' | awk '{print $2}' | head -n1 | xargs -I{} kill -9 {}
     chtsh =
       let
         port = 5000;
@@ -70,7 +91,6 @@
         exec = # bash
           ''
             pushd cheat.sh
-              export CHEATSH_PATH_WORKDIR="${config.devenv.root}/.cheat.sh"
               ${config.devenv.root}/.devenv/state/venv/bin/python -m flask --app bin/app.py run -p ${toString port} --reload --debug
             popd
           '';
