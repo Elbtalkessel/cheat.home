@@ -32,7 +32,6 @@
       colored
       langdetect
       cffi
-      ltpycld2
       pyyaml
       levenshtein
       pytest
@@ -51,6 +50,7 @@
         enable = true;
         requirements = ''
           polyglot
+          pycld2
         '';
         quiet = true;
       };
