@@ -11,6 +11,7 @@
     UPSTREAM_REQ_CACHE = "true";
     # Configs, logs, spool
     CHEATSH_PATH_WORKDIR = "${config.devenv.root}/.cheat.sh";
+    CHEATSH_ADAPTER_QUESTION_OUTPUT_FORMAT = "code";
   };
   # Add local bin directory to path for easier debugging
   # and sets cache directory for the upstream binary, also
@@ -27,6 +28,20 @@
       # chmod.sh:
       grc
       bc
+      # lib/fmt/comments.py dependency,
+      # Broken, but left for future reference, hangs on request.
+      # Using basic heuristic comments.py classifies
+      # each line as a code or text, using vim + nerdcommenter plugin comments
+      # text blocks producing valid code output.
+      # Invoked when adapter has `_output_format` set to `text+code` from lib/postprocessing.
+      ((vim.override { }).customize {
+        name = "vim";
+        # Install plugins for example for syntax highlighting of nix files
+        vimrcConfig.packages.myplugins = with pkgs.vimPlugins; {
+          start = [ nerdcommenter ];
+          opt = [ ];
+        };
+      })
     ])
     ++ (with pkgs.python3Packages; [
       six
