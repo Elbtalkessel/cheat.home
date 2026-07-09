@@ -129,7 +129,8 @@ class RSSQuestionFeedDict(typing.TypedDict):
 def query_question_rss(question_url: str) -> list[RSSEntryDict]:
     # /questions/[id]/[slug] -> /feeds/question/[id]
     url = question_url.replace("/questions", "/feeds/question").rsplit("/", 1)[0]
-    id_ = url.rsplit(url, 1)[-1]
+    logger.info("url=%s", url)
+    id_ = url.rsplit("/", 1)[-1]
 
     cache = (
         pathlib.Path(os.path.join(UPSTREAM_DIR_CACHE, f"{id_}.json"))
@@ -142,7 +143,6 @@ def query_question_rss(question_url: str) -> list[RSSEntryDict]:
             "entries"
         ]
 
-    logger.info("url=%s", url)
     response = typing.cast(RSSQuestionFeedDict, feedparser.parse(url))
     logger.info("len(response['entries'])=%s", len(response["entries"]))
     for item in response["entries"]:
