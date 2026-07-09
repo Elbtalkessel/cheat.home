@@ -2,7 +2,7 @@
 
   env = {
     REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-certificates.crt";
-    UPSTREAM_LOG_LEVEL = "DEBUG";
+    UPSTREAM_LOG_LEVEL = "INFO";
     UPSTREAM_RSS_CACHE = "true";
     UPSTREAM_REQ_CACHE = "true";
   };

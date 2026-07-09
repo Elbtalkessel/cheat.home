@@ -9,7 +9,7 @@ All errors written to stderr, result to stdout.
 Configurable through environment variables:
 - LOG_LEVEL: valid python loglevel name, e.g.: DEBUG, INFO, NOSET, etc.
 - UPSTREAM_RSS_CACHE: cache rss response (as json, cached by question id.)
-- UPSTREAM_REQ_CACHE: cache search response (as json, cached by tag + search query.)
+- UPSTREAM_REQ_CACHE: cache query_search_api response (as json, cached by tag + query_search_api query.)
 - UPSTREAM_DIR_CACHE: where to store cache, defaults to system temporary directory.
 """
 
@@ -28,7 +28,7 @@ from markdownify import markdownify as md
 
 
 FALSY = ["", "n", "no", "false"]
-UPSTREAM_LOG_LEVEL = os.getenv("LOG_LEVEL", "WARNING")
+UPSTREAM_LOG_LEVEL = os.getenv("UPSTREAM_LOG_LEVEL", "WARNING")
 UPSTREAM_RSS_CACHE = os.getenv("UPSTREAM_RSS_CACHE", "").lower() not in FALSY
 UPSTREAM_REQ_CACHE = os.getenv("UPSTREAM_REQ_CACHE", "").lower() not in FALSY
 UPSTREAM_DIR_CACHE = os.getenv("UPSTREAM_DIR_CACHE", tempfile.tempdir)
@@ -37,7 +37,7 @@ UPSTREAM_DIR_CACHE = os.getenv("UPSTREAM_DIR_CACHE", tempfile.tempdir)
 SEARCH_URL = "https://api.stackexchange.com/2.3/search"
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    format='time="%(asctime)s" level="%(levelname)s" logger="%(name)s" func="%(funcName)s" line="%(lineeno)d" message="%(message)s"',
+    format='time="%(asctime)s" level="%(levelname)s" func="%(funcName)s" line="%(lineno)d" message="%(message)s"',
     level=getattr(logging, UPSTREAM_LOG_LEVEL),
 )
 
@@ -150,7 +150,7 @@ def query_question_rss(question_url: str) -> list[RSSEntryDict]:
         item["summary_detail"]["value"] = summary
         item["summary_detail"]["type"] = "text/md"
 
-    if cache is not None:
+    if cache is not None and len(response["entries"]):
         cache.parent.mkdir(exist_ok=True)
         cache.write_text(json.dumps(response))
 
@@ -175,7 +175,7 @@ def parse_q(q: str) -> tuple[str, str]:
     return topic, query
 
 
-def search(q: str) -> list[SearchItemDict]:
+def query_search_api(q: str) -> list[SearchItemDict]:
     logger.info("q=%s", q)
     topic, query = parse_q(q)
     logger.info("tagged=%s intitle=%s", topic, query)
@@ -205,16 +205,17 @@ def search(q: str) -> list[SearchItemDict]:
         raise Exception(
             f"Request to {response.request.url} return code {response.status_code}, content:\n{response.content}"
         )
+    logger.info("response.request.url=%s", response.request.url)
 
     data = typing.cast(SearchResultDict, response.json())
-    if cache is not None:
+    if cache is not None and len(data["items"]):
         cache.parent.mkdir(exist_ok=True)
         cache.write_text(json.dumps(data))
     return data["items"]
 
 
 def query(q: str) -> typing.Generator[str]:
-    results = search(q)
+    results = query_search_api(q)
     logger.info("len(results)=%s", len(results))
 
     if not results:
