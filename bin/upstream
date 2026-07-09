@@ -3,14 +3,29 @@
 - Searches for a topic on StackOverflow.
 - Picks an answered or highest voted question.
 - Fetches RSS feed of the question.
-- Renders question and answers in markdown.
+- Renders answers in markdown.
 All errors written to stderr, result to stdout.
+Output is rendered as code.
 
 Configurable through environment variables:
 - LOG_LEVEL: valid python loglevel name, e.g.: DEBUG, INFO, NOSET, etc.
 - UPSTREAM_RSS_CACHE: cache rss response (as json, cached by question id.)
 - UPSTREAM_REQ_CACHE: cache query_search_api response (as json, cached by tag + query_search_api query.)
 - UPSTREAM_DIR_CACHE: where to store cache, defaults to system temporary directory.
+
+Issues:
+- Basic text wrapping, cht.sh requires it to be length of <=70, breaks markdown links.
+- cht.sh itself breaking it by forcefully wrapping a long link without ouputting the line as a comment. Example:
+    ```
+    [here in a github repo](https://github.com/schmijos/html-table-parser-python3/blob/master/html_table_parser/parser.py)
+    ```
+    output:
+    ```
+    [here in a github
+    # repo](https://github.com/schmijos/html-table-parser-
+    python3/blob/master/html_table_parser/parser.py)
+    ```
+  First break is issue without our logic, the second is cht.sh limitation.
 """
 
 import typing
@@ -32,6 +47,10 @@ UPSTREAM_LOG_LEVEL = os.getenv("UPSTREAM_LOG_LEVEL", "WARNING")
 UPSTREAM_RSS_CACHE = os.getenv("UPSTREAM_RSS_CACHE", "").lower() not in FALSY
 UPSTREAM_REQ_CACHE = os.getenv("UPSTREAM_REQ_CACHE", "").lower() not in FALSY
 UPSTREAM_DIR_CACHE = os.getenv("UPSTREAM_DIR_CACHE", tempfile.tempdir)
+LANG_TO_COMMENT = {
+    "python": "#",
+    "lua": "--",
+}  # // for everything else
 
 
 SEARCH_URL = "https://api.stackexchange.com/2.3/search"
@@ -175,7 +194,7 @@ def parse_q(q: str) -> tuple[str, str]:
     return lang, query
 
 
-def query_search_api(q: str) -> list[SearchItemDict]:
+def query_search_api(q: str) -> tuple[list[SearchItemDict], str, str]:
     logger.info("q=%s", q)
     lang, query = parse_q(q)
     logger.info("tagged=%s intitle=%s", lang, query)
@@ -189,7 +208,11 @@ def query_search_api(q: str) -> list[SearchItemDict]:
     )
     if cache and cache.exists():
         logger.info("cache=%s", cache)
-        return typing.cast(SearchResultDict, json.loads(cache.read_bytes()))["items"]
+        return (
+            typing.cast(SearchResultDict, json.loads(cache.read_bytes()))["items"],
+            lang,
+            query,
+        )
 
     response = requests.get(
         SEARCH_URL,
@@ -211,39 +234,41 @@ def query_search_api(q: str) -> list[SearchItemDict]:
     if cache is not None and len(data["items"]):
         cache.parent.mkdir(exist_ok=True)
         cache.write_text(json.dumps(data))
-    return data["items"]
+    return data["items"], lang, query
 
 
-def sentence_chunks(text: str, max_length=60) -> typing.Generator[str]:
+def sentence_chunks(
+    text: str, comment_prefix: str, max_length=60
+) -> typing.Generator[str]:
     chunks: list[str] = []
     for word in text.split(" "):
         next_chunk = " ".join(chunks + [word])
-        if len(next_chunk) > max_length:
-            yield f"// {' '.join(chunks)}"
+        if len(next_chunk) + len(comment_prefix) > max_length:
+            yield f"{comment_prefix} {' '.join(chunks)}"
             chunks = [word]
         else:
             chunks.append(word)
     if rest := " ".join(chunks):
-        yield f"// {rest}"
+        yield f"{comment_prefix} {rest}"
 
 
-def render(text: str) -> typing.Generator[str]:
+def render(text: str, comment_prefix: str) -> typing.Generator[str]:
     code_block = False
     for line in text.split("\n"):
         if line == "```":
             if code_block:
-                yield "// " + "-" * 60 + "\n\n"
+                yield f"{comment_prefix} " + "-" * 60 + "\n\n"
             code_block = not code_block
             continue
         if code_block:
             yield line
         else:
-            yield from sentence_chunks(line, 67)
+            yield from sentence_chunks(line, comment_prefix, 67)
 
 
 def query(q: str) -> typing.Generator[str]:
-    results = query_search_api(q)
-    logger.info("len(results)=%s", len(results))
+    results, lang, _ = query_search_api(q)
+    logger.info("len(results)=%s lang=%s", len(results), lang)
 
     if not results:
         raise Exception("No results on stackoverflow")
@@ -255,9 +280,10 @@ def query(q: str) -> typing.Generator[str]:
             break
 
     answers = query_question_rss(question["link"])[1:]
+    comment_prefix = LANG_TO_COMMENT.get(lang, "//")
     for answer in answers:
-        yield from render(answer["title"])
-        yield from render(answer["summary_detail"]["value"])
+        yield from render(answer["title"], comment_prefix)
+        yield from render(answer["summary_detail"]["value"], comment_prefix)
 
 
 if __name__ == "__main__":
