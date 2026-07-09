@@ -51,6 +51,7 @@ LANG_TO_COMMENT = {
     "python": "#",
     "lua": "--",
 }  # // for everything else
+LINE_MAX_LENGTH = 60
 
 
 SEARCH_URL = "https://api.stackexchange.com/2.3/search"
@@ -146,6 +147,11 @@ class RSSQuestionFeedDict(typing.TypedDict):
 
 
 def query_question_rss(question_url: str) -> list[RSSEntryDict]:
+    """
+    Converts a regular link to a question on StackOverflow to RSS feed URL and fetches it.
+    In addition `summary_detail` value of every answer will be converted to Markdown.
+    You still have original body inside `entries[].summary`.
+    """
     # /questions/[id]/[slug] -> /feeds/question/[id]
     url = question_url.replace("/questions", "/feeds/question").rsplit("/", 1)[0]
     logger.info("url=%s", url)
@@ -177,6 +183,13 @@ def query_question_rss(question_url: str) -> list[RSSEntryDict]:
 
 
 def parse_q(q: str) -> tuple[str, str]:
+    """
+    User search term parser. Replaces `+` signs with spaces, mostly for interoperability
+    when called manually from command line.
+    :param q: term as `Question` adapter passes it: "[lang]/[topic] more keywords"
+    :returns: `lang`, `topic more keywords`.
+    :raises Exception: when query is empty.
+    """
     lang, query = "", ""
     p = q.split(" ", 1)
     if not p[0]:
@@ -195,6 +208,11 @@ def parse_q(q: str) -> tuple[str, str]:
 
 
 def query_search_api(q: str) -> tuple[list[SearchItemDict], str, str]:
+    """
+    Requests StackOverflow /search API.
+    :raises Exception: on connection errors or bad response.
+    :returns: list of found questions, tag and term used for search.
+    """
     logger.info("q=%s", q)
     lang, query = parse_q(q)
     logger.info("tagged=%s intitle=%s", lang, query)
@@ -224,10 +242,7 @@ def query_search_api(q: str) -> tuple[list[SearchItemDict], str, str]:
             "site": "stackoverflow",
         },
     )
-    if not response.ok:
-        raise Exception(
-            f"Request to {response.request.url} return code {response.status_code}, content:\n{response.content}"
-        )
+    response.raise_for_status()
     logger.info("response.request.url=%s", response.request.url)
 
     data = typing.cast(SearchResultDict, response.json())
@@ -237,9 +252,15 @@ def query_search_api(q: str) -> tuple[list[SearchItemDict], str, str]:
     return data["items"], lang, query
 
 
-def sentence_chunks(
-    text: str, comment_prefix: str, max_length=60
+def _render_sentence_chunks(
+    text: str,
+    comment_prefix: str,
+    max_length: int,
 ) -> typing.Generator[str]:
+    """
+    render helper, wraps text to stay within `max_length`, each
+    outputted line is prefixed by `comment_prefix`.
+    """
     chunks: list[str] = []
     for word in text.split(" "):
         next_chunk = " ".join(chunks + [word])
@@ -253,35 +274,64 @@ def sentence_chunks(
 
 
 def render(text: str, comment_prefix: str) -> typing.Generator[str]:
+    """
+    A simple renderer converting markdown to code by prefixing all
+    lines outside code blocks with `comment_prefix` and stripping code blocks.
+    Example:
+        Hello world in python:
+        ```
+        print("Ssssss")
+        ```
+    Output:
+        # Hello world in python:
+        print("Ssssss")
+    Also ensures that line not exeding 70 chars. Outputs line by line.
+    """
     code_block = False
     for line in text.split("\n"):
         if line == "```":
             if code_block:
-                yield f"{comment_prefix} " + "-" * 60 + "\n\n"
+                yield f"{comment_prefix} " + "-" * LINE_MAX_LENGTH + "\n\n"
             code_block = not code_block
             continue
         if code_block:
             yield line
         else:
-            yield from sentence_chunks(line, comment_prefix, 67)
+            yield from _render_sentence_chunks(line, comment_prefix, LINE_MAX_LENGTH)
 
 
-def query(q: str) -> typing.Generator[str]:
+def main(q: str) -> typing.Generator[str]:
+    """
+    :param q: user's query, in form "[lang]/topic more keywords".
+    :returns: parsed answer in form of the given lang code, line by line.
+    """
+
+    # search for question, use lang as question tag, the rest is search query.
+    # example: "python/parsing html" will search questions with "python" tag and "parsing html" in title.
     results, lang, _ = query_search_api(q)
     logger.info("len(results)=%s lang=%s", len(results), lang)
 
     if not results:
         raise Exception("No results on stackoverflow")
 
+    # query_search_api returns results sorted by vote,
+    # default to any highest voted question, but if there
+    # an answered question - take it instead.
     question = results[0]
     for i in results:
         if i["is_answered"]:
             question = i
             break
 
+    # this will fetch answers using rss feed,
+    # doesn't seem that API have a better way to do it.
+    # another option is to use `lynx -dump` and parse it.
     answers = query_question_rss(question["link"])[1:]
     comment_prefix = LANG_TO_COMMENT.get(lang, "//")
     for answer in answers:
+        # title contains who answered and short summary.
+        # summary_detail answer itself, note original summary_detail is html,
+        # but query_question_rss converts it to md, easier to work with.
         yield from render(answer["title"], comment_prefix)
         yield from render(answer["summary_detail"]["value"], comment_prefix)
 
@@ -289,7 +339,7 @@ def query(q: str) -> typing.Generator[str]:
 if __name__ == "__main__":
     args = sys.argv[1:]
     try:
-        for line in query("".join(args)):
+        for line in main("".join(args)):
             sys.stdout.write(line + "\n")
     except Exception as e:
         sys.stderr.write(str(e) + "\n")
