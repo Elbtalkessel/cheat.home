@@ -62,10 +62,9 @@
             popd
           '';
         watch = {
-          paths = [ ./.cheat.sh/etc ];
-          extensions = [
-            "yaml"
-            "yml"
+          paths = [
+            ./.cheat.sh/etc
+            ./cheat.sh/bin
           ];
         };
         ready = {
