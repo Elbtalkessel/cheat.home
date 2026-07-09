@@ -158,31 +158,31 @@ def query_question_rss(question_url: str) -> list[RSSEntryDict]:
 
 
 def parse_q(q: str) -> tuple[str, str]:
-    topic, query = "", ""
+    lang, query = "", ""
     p = q.split(" ", 1)
     if not p[0]:
         raise Exception("No question provided.")
-    topic = p[0]
+    lang = p[0]
 
-    if "/" in topic:
-        topic, *p = q.split("/")
+    if "/" in lang:
+        lang, *p = q.split("/")
         query = " ".join(p)
 
     if len(p) == 2:
         query += p[1]
 
     query = query.replace("+", " ")
-    return topic, query
+    return lang, query
 
 
 def query_search_api(q: str) -> list[SearchItemDict]:
     logger.info("q=%s", q)
-    topic, query = parse_q(q)
-    logger.info("tagged=%s intitle=%s", topic, query)
+    lang, query = parse_q(q)
+    logger.info("tagged=%s intitle=%s", lang, query)
 
     cache = (
         pathlib.Path(
-            os.path.join(UPSTREAM_DIR_CACHE, f"{topic}_{query}.json".replace(" ", "_"))
+            os.path.join(UPSTREAM_DIR_CACHE, f"{lang}_{query}.json".replace(" ", "_"))
         )
         if UPSTREAM_REQ_CACHE and UPSTREAM_DIR_CACHE
         else None
@@ -196,7 +196,7 @@ def query_search_api(q: str) -> list[SearchItemDict]:
         params={
             "order": "desc",
             "sort": "votes",
-            "tagged": topic,
+            "tagged": lang,
             "intitle": query,
             "site": "stackoverflow",
         },
