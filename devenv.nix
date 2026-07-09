@@ -85,31 +85,37 @@
     };
   };
 
-  services = {
-    redis.enable = false;
-  };
-
   scripts = {
-    "c:login" = {
+    "r-docker".exec = "docker --config ${config.devenv.root}/.cheat.sh/docker";
+    "r-docker-build" = {
       exec = # bash
         ''
-          docker --config ${config.devenv.root}/.cheat.sh/docker
+          pushd $(readlink cheat.sh)
+            docker build . --tag quay.io/glazing2928/chtsh:latest
+          popd
         '';
     };
-    "c:build" = {
+    "r-docker-up" = {
       exec = # bash
         ''
-          docker build $(readlink cheat.sh) -f ${config.devenv.root}/containers/Containerfile --tag quay.io/glazing2928/chtsh:latest
+          pushd $(readlink cheat.sh)
+            docker compose up -d
+          popd
         '';
     };
-    "c:push" = {
+    "r-docker-up-debug" = {
       exec = # bash
         ''
-          docker --config ${config.devenv.root}/.cheat.sh/docker push quay.io/glazing2928/chtsh:latest
+          pushd $(readlink cheat.sh)
+            docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d
+          popd
         '';
     };
   };
 
+  services = {
+    redis.enable = true;
+  };
   processes = {
     # Local dev server, reloads on code, binary and config file changes.
     #
