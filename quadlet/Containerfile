@@ -22,7 +22,7 @@ WORKDIR /app
 
 # Download and unpack cheat.sh source
 RUN curl -L https://github.com/Elbtalkessel/cheat.sh/archive/refs/heads/master.tar.gz | tar xz --strip-components=1 -C /app
-RUN curl -L https://raw.githubusercontent.com/Elbtalkessel/cheat.home/refs/heads/master/bin/upstream /app/bin/
+RUN curl -L https://raw.githubusercontent.com/Elbtalkessel/cheat.home/refs/heads/master/bin/upstream > /app/bin/upstream
 
 # building missing python packages
 # alpine:3.24 - wasn't able to build PyICU without installing py3-pkgconfig and icu-dev.
