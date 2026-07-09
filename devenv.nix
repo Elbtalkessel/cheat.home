@@ -85,33 +85,49 @@
     };
   };
 
-  scripts = {
-    "r-docker".exec = "docker --config ${config.devenv.root}/.cheat.sh/docker";
-    "r-docker-build" = {
-      exec = # bash
-        ''
-          pushd $(readlink cheat.sh)
-            docker build . --tag quay.io/glazing2928/chtsh:latest
-          popd
-        '';
+  scripts =
+    let
+      docker = "docker --config ${config.devenv.root}/.cheat.sh/docker";
+      image = "quay.io/glazing2928/chtsh:latest";
+    in
+    {
+      "r-docker-build" = {
+        exec = # bash
+          ''
+            pushd $(readlink cheat.sh)
+              docker build . --tag ${image}
+            popd
+          '';
+      };
+      "r-docker-up" = {
+        exec = # bash
+          ''
+            pushd $(readlink cheat.sh)
+              docker compose up -d
+            popd
+          '';
+      };
+      "r-docker-up-debug" = {
+        exec = # bash
+          ''
+            pushd $(readlink cheat.sh)
+              docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d
+            popd
+          '';
+      };
+      "r-docker-push" = {
+        exec = # bash
+          ''
+            ${docker} push ${image}
+          '';
+      };
+      "r-docker-login" = {
+        exec = # bash
+          ''
+            ${docker} login quay.io -u glazing2928 --password-stdin
+          '';
+      };
     };
-    "r-docker-up" = {
-      exec = # bash
-        ''
-          pushd $(readlink cheat.sh)
-            docker compose up -d
-          popd
-        '';
-    };
-    "r-docker-up-debug" = {
-      exec = # bash
-        ''
-          pushd $(readlink cheat.sh)
-            docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d
-          popd
-        '';
-    };
-  };
 
   services = {
     redis.enable = true;
