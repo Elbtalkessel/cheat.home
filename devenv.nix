@@ -99,7 +99,7 @@
     "c:build" = {
       exec = # bash
         ''
-          docker build containers -f containers/Containerfile --tag quay.io/glazing2928/chtsh:latest
+          docker build $(readlink cheat.sh) -f ${config.devenv.root}/containers/Containerfile --tag quay.io/glazing2928/chtsh:latest
         '';
     };
     "c:push" = {
